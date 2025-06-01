@@ -42,7 +42,7 @@ builder.Services.AddSingleton<IMcpClient>(sp =>
     SseClientTransportOptions sseTransportOptions = new()
     {
         //Endpoint = new Uri("https+http://aspnetsseserver")
-        Endpoint = client.BaseAddress
+        Endpoint = new Uri(url)
     };
 
     SseClientTransport sseClientTransport = new(transportOptions: sseTransportOptions);

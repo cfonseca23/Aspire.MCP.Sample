@@ -10,9 +10,10 @@ builder.Services.AddProblemDetails();
 // add MCP server
 builder.Services
     .AddMcpServer()
+    .WithHttpTransport()
+    .WithToolsFromAssembly()
     .WithTools<Jokes>()
     .WithTools<WeatherTool>();
-//.WithToolsFromAssembly();
 var app = builder.Build();
 
 // Initialize default endpoints
@@ -21,6 +22,7 @@ app.UseHttpsRedirection();
 
 // map endpoints
 app.MapGet("/", () => $"Hello MCP Server! {DateTime.Now}");
+app.MapGet("/hello", () => $"Hello MCP Server! {DateTime.Now}");
 app.MapMcp();
 
 app.Run();
