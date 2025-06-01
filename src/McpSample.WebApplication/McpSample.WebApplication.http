@@ -1,0 +1,6 @@
+@McpSample.WebApplication_HostAddress = http://localhost:5242
+
+GET {{McpSample.WebApplication_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

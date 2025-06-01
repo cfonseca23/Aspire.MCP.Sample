@@ -17,6 +17,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "2 MCP Server", "2 MCP Serve
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "3 Client", "3 Client", "{09DEE05B-519A-442E-A5E6-E1AE1E977F20}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "McpSample.WebApplication", "src\McpSample.WebApplication\McpSample.WebApplication.csproj", "{DB482699-FE42-3A78-46DD-977816C28121}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{F73B9265-83CA-6ACB-BBE0-71D5856E1CB9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F73B9265-83CA-6ACB-BBE0-71D5856E1CB9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F73B9265-83CA-6ACB-BBE0-71D5856E1CB9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DB482699-FE42-3A78-46DD-977816C28121}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DB482699-FE42-3A78-46DD-977816C28121}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DB482699-FE42-3A78-46DD-977816C28121}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DB482699-FE42-3A78-46DD-977816C28121}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -8,4 +8,6 @@ var blazorchat = builder
     .WithReference(aspnetsseserver)
     .WithExternalHttpEndpoints();
 
+builder.AddProject<Projects.McpSample_WebApplication>("mcpsample-webapplication");
+
 builder.Build().Run();
