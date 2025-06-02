@@ -9,6 +9,8 @@
 @using ModelContextProtocol.Client
 @using System.Text
 @inject IMcpClient McpClient
+@inject NavigationManager Navigation
+
 @attribute [StreamRendering(true)]
 @rendermode InteractiveServer
 
@@ -17,73 +19,86 @@
 <link href="css/Home.css" rel="stylesheet" />
 
 <div class="chat-container">
-    <div class="chat-bubble assistant">
-        <div class="chat-title">Chat with an MCP Server</div>
-        <div class="chat-content">
-            <p>Hi, I'm a client to test MCP using a model <b>[@deploymentName]</b> with <b>[@clientMode]</b></p>
-            <p>Check the Settings page to test the model using GitHub Models, Ollama or Azure AI Foundry or to use custom settings.</p>
-        </div>
-        <div class="chat-title">Current MCP Tools in the Server:</div>
-        <div class="chat-content">
-            @if (tools is not null)
-                foreach (var tool in tools)
-                {
-                    <p>- <b>@tool.Name</b>: @tool.Description</p>
-                }
-        </div>
-    </div>
 
-    @foreach (var message in ChatMessages)
+    @if (!isConfigValid)
     {
-        string chatBubbleClass = string.Empty;
-        string messageContent = string.Empty;
-        string messageThink = string.Empty;
-        string messageTitle = string.Empty;
-        string functionResponse = string.Empty;
-        var functionCallId = string.Empty;
+        <div class="error-container">
+            <div class="error-title">Configuración inválida</div>
+            <div class="error-content">La configuración es incompleta o inválida. Por favor, ve a la página de configuración.
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="chat-bubble assistant">
+            <div class="chat-title">Chat with an MCP Server</div>
+            <div class="chat-content">
+                <p>Hi, I'm a client to test MCP using a model <b>[@deploymentName]</b> with <b>[@clientMode]</b></p>
+                <p>Check the Settings page to test the model using GitHub Models, Ollama or Azure AI Foundry or to use custom settings.</p>
+            </div>
+            <div class="chat-title">Current MCP Tools in the Server:</div>
+            <div class="chat-content">
+                @if (tools is not null)
+                    foreach (var tool in tools)
+                    {
+                        <p>- <b>@tool.Name</b>: @tool.Description</p>
+                    }
+            </div>
+        </div>
 
-        messageContent = message?.Text ?? string.Empty;
-
-        if (message.Role == ChatRole.User)
+        @foreach (var message in ChatMessages)
         {
-            messageTitle = "User";
-            chatBubbleClass = "chat-bubble user";
-        }
-        if (message.Role == ChatRole.Assistant)
-        {
-            messageTitle = "Assistant";
-            chatBubbleClass = "chat-bubble assistant";
+            string chatBubbleClass = string.Empty;
+            string messageContent = string.Empty;
+            string messageThink = string.Empty;
+            string messageTitle = string.Empty;
+            string functionResponse = string.Empty;
+            var functionCallId = string.Empty;
 
-            // in case of using a reasoning model
-            var match = Regex.Match(messageContent, @"<think>(.*?)<\/think>(.*)", RegexOptions.Singleline);
-            if (match.Success)
+            var functionResults = Enumerable.Empty<FunctionResultContent>().ToList();
+            var FunctionCallResults = Enumerable.Empty<FunctionCallContent>().ToList();
+
+            messageContent = message?.Text ?? string.Empty;
+
+            if (message.Role == ChatRole.User)
             {
-                messageThink = match.Groups[1].Value.Trim();
-                messageContent = match.Groups[2].Value.Trim();
+                messageTitle = "User";
+                chatBubbleClass = "chat-bubble user";
             }
-        }
-        if (message.Role == ChatRole.System)
-        {
-            messageContent = string.Empty;
-        }
-
-        if (message.Role == ChatRole.Tool)
-        {
-            messageTitle = "Tool";
-            messageContent = string.Empty;
-            chatBubbleClass = "chat-bubble tool";
-            if (message.Contents.FirstOrDefault() is FunctionResultContent functionResult)
+            if (message.Role == ChatRole.Assistant)
             {
-                functionResponse = functionResult.Result.ToString();
-                functionCallId = $"Call Id: {functionResult.CallId}";
-            }
-        }
+                messageTitle = "Assistant";
+                chatBubbleClass = "chat-bubble assistant";
 
-        if (!string.IsNullOrEmpty(messageContent) || messageTitle == "Tool")
-        {
-            <div class="@chatBubbleClass">
-                @if (string.IsNullOrEmpty(functionResponse))
+                // in case of using a reasoning model
+                var match = Regex.Match(messageContent, @"<think>(.*?)<\/think>(.*)", RegexOptions.Singleline);
+                if (match.Success)
                 {
+                    messageThink = match.Groups[1].Value.Trim();
+                    messageContent = match.Groups[2].Value.Trim();
+                }
+
+                FunctionCallResults = message.Contents
+                .OfType<FunctionCallContent>()
+                .ToList();
+            }
+            if (message.Role == ChatRole.System)
+            {
+                messageContent = string.Empty;
+            }
+            if (message.Role == ChatRole.Tool)
+            {
+                messageTitle = "Tool";
+                messageContent = string.Empty;
+                chatBubbleClass = "chat-bubble tool";
+                functionResults = message.Contents
+                    .OfType<FunctionResultContent>()
+                    .ToList();
+            }
+
+            if (!string.IsNullOrEmpty(messageContent) || (messageTitle == "Tool" || messageTitle == "Assistant"))
+            {
+                <div class="@chatBubbleClass">
                     <div class="chat-title">@messageTitle</div>
                     <div class="chat-content">
                         @messageContent
@@ -95,49 +110,80 @@
                             </details>
                         }
                     </div>
-                }
-                else
-                {
-                    <details>
-                        <summary class="think-summary">Tool Result</summary>
-                        <div class="think-content">@functionResponse</div>
-                        <div class="think-content">@functionCallId</div>
-                    </details>
-                }
+
+                    @foreach (var result in FunctionCallResults)
+                    {
+                        <details>
+                            <summary class="think-summary">Tool Call</summary>
+                            <div class="think-content"><b>Función:</b> @result.Name</div>
+                            <div class="think-content">
+                                <b>Argumentos:</b>
+                                @if (result.Arguments is not null)
+                                {
+                                    <ul>
+                                        @foreach (var arg in result.Arguments)
+                                        {
+                                            <li>@arg.Key: @arg.Value</li>
+                                        }
+                                    </ul>
+                                }
+                                else
+                                {
+                                    <span>Sin argumentos</span>
+                                }
+                            </div>
+                            <div class="think-content"><b>Call Id:</b> @result.CallId</div>
+                        </details>
+                    }
+
+                    @foreach (var result in functionResults)
+                    {
+                        <details>
+                            <summary class="think-summary">Tool Result</summary>
+                            <div class="think-content">@result.Result</div>
+                            <div class="think-content">Call Id: @result.CallId</div>
+                        </details>
+                    }
+                </div>
+            }
+        }
+
+
+        @if (isLoading)
+        {
+            <div class="loading-container">
+                <div class="loading-ring"></div>
+            </div>
+        }
+
+        <div class="chat-input-container">
+            <input type="text" @bind="userQuestion" placeholder="Ask a question..." class="chat-input" />
+            <button @onclick="AskQuestion" type="submit" class="chat-button">Chat</button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorDetails))
+        {
+            <div class="error-container">
+                <div class="error-title">Error:</div>
+                <div class="error-content">@errorDetails</div>
             </div>
         }
     }
+
 </div>
 
-@if (isLoading)
-{
-    <div class="loading-container">
-        <div class="loading-ring"></div>
-    </div>
-}
 
-<div class="chat-input-container">
-    <input type="text" @bind="userQuestion" placeholder="Ask a question..." class="chat-input" />
-    <button @onclick="AskQuestion" type="submit" class="chat-button">Chat</button>
-</div>
-
-@if (!string.IsNullOrEmpty(errorDetails))
-{
-    <div class="error-container">
-        <div class="error-title">Error:</div>
-        <div class="error-content">@errorDetails</div>
-    </div>
-}
 
 @code {
     private bool isLoading = false;
+    private bool isConfigValid = false;
     private string? chatResponse;
     private string userQuestion = string.Empty;
     private string errorDetails = string.Empty;
     private Microsoft.Extensions.AI.IChatClient? client;
     private string apiKey = string.Empty;
     private string endpoint = string.Empty;
-    private string deploymentName = "llama3.2";
+    private string deploymentName = "qwen3:8b-q4_K_M";
     private string clientMode = string.Empty;
     private IList<McpClientTool> tools = null!;
     [Inject] private IConfiguration Configuration { get; set; } = default!;
@@ -152,7 +198,12 @@
         tools = await McpClient.ListToolsAsync();
 
         // system message
-        ChatMessages.Add(new ChatMessage(ChatRole.System, "You are a helpful assistant. You always replies using text and emojis. You never generate HTML or Markdown. You only do what the user ask you to do. If you don't have a function to answer a question, you just answer que question"));
+        const string Content = 
+        @"Eres un asistente conversacional útil, amable y profesional.
+Responde siempre de forma clara, concisa y amigable, usando texto plano y emojis cuando sea apropiado 😊.
+Nunca generes HTML, Markdown ni enlaces.
+Sigue exactamente las instrucciones del usuario y respeta siempre la respuesta de las funciones.";
+        ChatMessages.Add(new ChatMessage(ChatRole.System, Content));
     }
 
     private async Task AskQuestion(MouseEventArgs e)
@@ -198,63 +249,72 @@
             Logger.LogInformation("Initializing Chat component");
 
             // read the settings from the configuration
-            endpoint = Configuration["endpoint"] ?? throw new ArgumentNullException("Endpoint");
+            endpoint = Configuration["endpoint"] ?? string.Empty;
             apiKey = Configuration["apikey"] ?? string.Empty;
-            deploymentName = Configuration["deploymentname"] ?? "llama3.2";
+            deploymentName = Configuration["deploymentname"] ?? string.Empty;
 
-            Logger.LogInformation($"===================================================");
-            Logger.LogInformation($"Chat info - Endpoint: {endpoint} - DeploymentName: {deploymentName} - ApiKey length: {apiKey.Length}");
+            if (string.IsNullOrEmpty(endpoint) && string.IsNullOrEmpty(deploymentName))
+            {
+                isConfigValid = false;
+            }else
+            {
+                isConfigValid = true;
 
-            // check for localhost, that's mean ollama
-            if (endpoint.Contains("localhost", StringComparison.OrdinalIgnoreCase))
-            {
-                clientMode = "Ollama";
-                Logger.LogInformation("Using localhost endpoint - Ollama");
-                var ollamaEndpoint = new Uri(endpoint);
-                client = new OllamaChatClient(
-                    endpoint: ollamaEndpoint,
-                    modelId: deploymentName)
-                    .AsBuilder()
-                    .UseFunctionInvocation()
-                    .Build();
-            }
-            else
-            {
-                if (string.IsNullOrEmpty(apiKey))
+                Logger.LogInformation($"===================================================");
+                Logger.LogInformation($"Chat info - Endpoint: {endpoint} - DeploymentName: {deploymentName} - ApiKey length: {apiKey.Length}");
+
+                // check for localhost, that's mean ollama
+                if (endpoint.Contains("localhost", StringComparison.OrdinalIgnoreCase))
                 {
-                    clientMode = "Azure with Default Credentials";
-                    Logger.LogInformation("Using DefaultAzureCredential");
-                    client = new AzureOpenAIClient(
-                        new Uri(endpoint),
-                        new DefaultAzureCredential())
-                        .AsChatClient(deploymentName)
+                    clientMode = "Ollama";
+                    Logger.LogInformation("Using localhost endpoint - Ollama");
+                    var ollamaEndpoint = new Uri(endpoint);
+                    client = new OllamaChatClient(
+                        endpoint: ollamaEndpoint,
+                        modelId: deploymentName)
                         .AsBuilder()
                         .UseFunctionInvocation()
                         .Build();
                 }
                 else
                 {
-                    // Check if it's GitHub Models
-                    if (endpoint.Contains("models.inference.ai.azure.com", StringComparison.OrdinalIgnoreCase))
+                    if (!string.IsNullOrEmpty(apiKey))
                     {
-                        clientMode = "GitHub Models";
+                        clientMode = "Azure with Default Credentials";
+                        Logger.LogInformation("Using DefaultAzureCredential");
+                        client = new AzureOpenAIClient(
+                            new Uri(endpoint),
+                            new DefaultAzureCredential())
+                            .AsChatClient(deploymentName)
+                            .AsBuilder()
+                            .UseFunctionInvocation()
+                            .Build();
                     }
                     else
                     {
-                        clientMode = "Using Endpoint and ApiKey";
-                    }
+                        // Check if it's GitHub Models
+                        if (endpoint.Contains("models.inference.ai.azure.com", StringComparison.OrdinalIgnoreCase))
+                        {
+                            clientMode = "GitHub Models";
+                        }
+                        else
+                        {
+                            clientMode = "Using Endpoint and ApiKey";
+                        }
 
-                    Logger.LogInformation("Using ApiKey");
-                    var azureClient =
-                        new Azure.AI.Inference.ChatCompletionsClient(
-                        endpoint: new Uri(endpoint),
-                        new AzureKeyCredential(apiKey));
-                    client = azureClient.AsIChatClient(deploymentName)
-                         .AsBuilder()
-                         .UseFunctionInvocation()
-                         .Build();
+                        Logger.LogInformation("Using ApiKey");
+                        var azureClient =
+                            new Azure.AI.Inference.ChatCompletionsClient(
+                            endpoint: new Uri(endpoint),
+                            new AzureKeyCredential(apiKey));
+                        client = azureClient.AsIChatClient(deploymentName)
+                             .AsBuilder()
+                             .UseFunctionInvocation()
+                             .Build();
+                    }
                 }
             }
+            
             Logger.LogInformation($"===================================================");
         }
         catch (Exception ex)
