@@ -21,10 +21,15 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
+app.MapDefaultEndpoints();
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
 app.MapControllers();
+
+
+app.MapGet("/hello", () => $"Hello web api in MCP sample! {DateTime.Now}");
+
 
 app.Run();
