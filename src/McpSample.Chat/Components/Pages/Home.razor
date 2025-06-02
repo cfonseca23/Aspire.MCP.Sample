@@ -278,7 +278,7 @@ Sigue exactamente las instrucciones del usuario y respeta siempre la respuesta d
                 }
                 else
                 {
-                    if (!string.IsNullOrEmpty(apiKey))
+                    if (string.IsNullOrEmpty(apiKey))
                     {
                         clientMode = "Azure with Default Credentials";
                         Logger.LogInformation("Using DefaultAzureCredential");
